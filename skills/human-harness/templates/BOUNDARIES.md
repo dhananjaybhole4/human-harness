@@ -4,6 +4,7 @@ _Approved by owner: {{DATE}}. Changes need owner approval. Max 15 rules._
 ## Never
 - Hardcode values or special-case sample/test inputs.
 - Weaken, skip or delete a check or test to make it pass.
+- Hide errors (silent `except`, swallowed failures, quiet fallbacks) or patch symptoms; fix the root cause and fail loudly.
 - Touch the holdout vault or `harness/_holdout_staging/` contents.
 - On a branch: change trunk harness files (they change only at merge). Branch work goes in `harness/branches/<branch>/`.
 
