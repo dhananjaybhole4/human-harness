@@ -1,0 +1,36 @@
+# Acceptance checks — owner-approved, fingerprinted by `harness/verify --lock`.
+# Each check: a shell command run from the project root; exit code 0 = PASS.
+# Print key numbers as a last line "METRIC name=value" so verify and `--compare` can show them.
+# Branches add their own checks in harness/branches/<branch>/checks.toml (run on top of these).
+
+[project]
+name = "{{NAME}}"          # holdout vault: ~/harness-holdouts/<name>/<suite>.tar.enc
+trunk = "{{TRUNK}}"        # main line; other branches get a branch harness
+
+# [[check]]
+# name = "core behaviour"
+# cmd = "python -m pytest -q harness/checks/test_core.py"
+# why = "SPEC done #1"
+# timeout = 900
+
+[budget]                   # code-size budget; max_code_lines = 0 turns it off
+max_code_lines = 0
+src_dirs = ["src"]
+extensions = [".py"]
+
+[hardcode]                 # warn when literals from test/sample files appear in source code
+test_dirs = ["harness/checks", "tests"]
+src_dirs = ["src"]
+min_len = 6
+ignore = []
+
+[docs]                     # line limits for owner-facing docs
+"harness/SPEC.md" = 60
+"harness/BOUNDARIES.md" = 25
+"harness/STATUS.md" = 30
+
+# [[holdout]]              # owner-only: `harness/verify --holdout`; one entry per suite
+# suite = "main"
+# cmd = "python harness/checks/holdout_eval.py --data {holdout_dir}"   # must print a summary only
+# pass_regex = "PASS"
+# show_lines = 5

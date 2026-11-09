@@ -1,0 +1,17 @@
+# Branch checks for {{BRANCH}}: run ON TOP of the trunk checks. Owner-approved, fingerprinted.
+# Put check files in harness/checks/{{SLUG}}/. At merge, these entries move into harness/checks.toml.
+# Print key numbers as a last line "METRIC name=value" so `harness/verify --compare` can show them.
+
+# [[check]]
+# name = "new feature works"
+# cmd = "python3 harness/checks/{{SLUG}}/test_feature.py"
+
+# Branch hidden-exam suite (owner seals it while on this branch):
+# [[holdout]]
+# suite = "{{SLUG}}"
+# cmd = "python3 harness/checks/{{SLUG}}/holdout_eval.py --data {holdout_dir}"
+# pass_regex = "PASS"
+
+# Optional overrides of trunk settings for this branch only (owner-approved):
+# [budget]
+# max_code_lines = 500
