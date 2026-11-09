@@ -1,7 +1,7 @@
 ---
 name: human-harness
-description: Build and maintain a project harness (spec, boundaries, acceptance checks, encrypted holdout, status, decisions, architecture map) by deeply interviewing the owner, squeezing out everything in their head, and coaching them on core engineering skills along the way. Modes - init (new or existing project), run (autonomous build loop that stops for owner decisions), update (mid-project re-interview, including adding new scope), merge (finish a branch), check (health audit), postmortem (turn a mistake into a rule or check). Use for "/human-harness", "/human-harness init|update|check|postmortem", "set up a harness", "update the harness", "something went wrong, fix the harness".
-argument-hint: [init|run|update|merge|check|postmortem] [notes]
+description: Build and maintain a project harness (spec, boundaries, acceptance checks, encrypted holdout, status, decisions, architecture map) by deeply interviewing the owner, squeezing out everything in their head, and coaching them on core engineering skills along the way. Modes - init (new or existing project), run (autonomous build loop that stops for owner decisions), update (mid-project re-interview, including adding new scope), merge (finish a branch), check (health audit), postmortem (turn a mistake into a rule or check), learn (Socratic teaching of any topic, 5 tiered questions per step, honest grading). Use for "/human-harness", "/human-harness init|update|check|postmortem", "set up a harness", "update the harness", "something went wrong, fix the harness", "/human-harness learn <topic>", "teach me X step by step".
+argument-hint: [init|run|update|merge|check|postmortem|learn] [notes or topic]
 ---
 
 # human-harness
@@ -20,6 +20,7 @@ moves, and make the owner a better engineer while doing it.
 | `merge` | `modes/merge.md`, `coach.md` (finish a branch: fold into base, or drop and keep the lesson) |
 | `check` | `modes/check.md` |
 | `postmortem` | `modes/postmortem.md`, `coach.md` |
+| `learn <topic>` | `modes/learn.md` only (teach the owner; topic = the rest of the args; works with or without `harness/`) |
 | none | No `harness/` → `init`. On a branch without a branch harness → `init` (branch). Else show 3-line status (scope, verify result, next) and ask which mode; default `update`. |
 
 ## Scope (branches)
@@ -104,6 +105,7 @@ If a block looks wrong, tell the owner. Never work around it.
 | `/human-harness update [I want to add X]` | Claude chat | Short re-interview / add new scope |
 | `/human-harness check` | Claude chat | Report card: GREEN / AMBER / RED |
 | `/human-harness postmortem` | Claude chat | Mistake → permanent fix |
+| `/human-harness learn <topic>` | Claude chat | Learn any topic step by step, 5 hard questions per step |
 | `harness/verify` | Own terminal (Claude runs it too) | Practice test: PASS / FAIL |
 | `harness/verify --seal` | Own terminal only | Lock hidden exam cases in the safe |
 | `harness/verify --lock` | Own terminal only | Sign the rulebook (after approving changes) |
