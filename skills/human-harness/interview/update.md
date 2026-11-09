@@ -2,6 +2,7 @@
 
 Keeps the harness true as the project teaches us things. Short and targeted: 3–10 questions.
 Same push rules as `init.md` §3 (load that section only if you need the technique table).
+Ask via AskUserQuestion by default (option 1 = your recommendation), as in `init.md` §3.
 **Scope:** works on the current scope. On a branch, read and change only the branch files
 (`harness/branches/<slug>/`); a change the trunk needs goes into the branch SPEC "Changes to trunk"
 (applied at merge). On trunk, changes go to the trunk files.

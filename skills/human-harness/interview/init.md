@@ -48,8 +48,13 @@ Pull in `addons/<x>.md` as soon as the domain is clear (e.g. ML → `addons/ml.m
 
 ## 3. Question craft
 - **Open first, then narrow.** "Tell me about…" → "What exactly happens when…" → "Give me the number."
-- **One question per message.** Exception: batches of quick facts (formats, versions, yes/no) as
-  multiple choice with AskUserQuestion.
+- **One question per message, asked with AskUserQuestion by default.** Option 1 = your
+  recommendation (label ends "(Recommended)"); 1–3 more real alternatives; the owner's own words go
+  in the automatic "Other" field. Make each question stand alone (the owner may see only the
+  dialog). Quick facts (formats, versions, yes/no) may be batched, up to 4 per call.
+  Plain text instead whenever options would hurt the answer, e.g. you can't yet guess plausible
+  answers (early "Tell me about…" openers), a coached 🎯 question (options would give the answer
+  away), or you need the owner's own words (stories, examples, reasons).
 - **After every answer:** extract facts, check for contradictions with earlier answers, find the
   weakest point in what was just said, and push on it before moving on.
 
