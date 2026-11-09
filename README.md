@@ -4,17 +4,9 @@ Make Claude Code prove it built what you asked for.
 
 human-harness is a [Claude Code](https://docs.claude.com/en/docs/claude-code) skill. It interviews you until your idea is written down as numbers and examples, turns that into checks the agent has to pass, and keeps a second set of test cases encrypted where the agent can't read them. You judge the result by running one command, without reading the code.
 
-```
-$ harness/verify
-HARNESS VERIFY — demo @ trunk (main) — 2026-11-09 16:23
- PASS     totals add up (0.0s)  cases=1
- FAIL     handles empty input (0.0s)
-          | TypeError: 'NoneType' object is not iterable
- WARN     fingerprint: never locked (owner: `harness/verify --lock` after approving checks)
- PASS     hardcode: no test literals found in source
- PASS     docs within size limits
-RESULT: FAIL (1 fail, 1 warn) · logs: harness/.logs/
-```
+<img alt="harness/verify fails on an empty invoice, one line is fixed, verify passes" src="assets/demo.gif" width="720">
+
+A real recording of a three-check project: one check fails, one line is fixed, and every check passes.
 
 I built it because I direct AI agents but don't review the code they write. "Done" from an agent meant nothing to me until it came with evidence I could check myself.
 
