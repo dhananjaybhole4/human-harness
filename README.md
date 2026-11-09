@@ -1,161 +1,129 @@
-<div align="center">
+# human-harness
 
-# 🧭 human-harness
+A [Claude Code](https://docs.claude.com/en/docs/claude-code) skill for people who direct AI coding agents but don't review the code themselves.
 
-**Keep the human in charge of the AI that writes their code.**
+It interviews you until "what I want" is written down as numbers and examples, turns that into checks the agent has to pass, and keeps a set of test cases encrypted where the agent can't read them. You judge the work by running those checks. You never have to read a diff.
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code) skill that interviews you until it knows exactly what you want,
-writes it down as a spec, rules and checks, and then holds the AI to them, including on hidden test cases the AI can never see.
+## Why
 
-*You judge the work by how it behaves, without reading the code.*
+When an agent says "done", you usually can't tell whether:
 
-[Install](#-install-30-seconds) · [How it works](#-how-it-works) · [Commands](#-commands) · [Learn mode](#-learn-mode) · [FAQ](#-faq)
+- it built what you meant, or something close to it
+- it made a failing test pass by editing the test
+- it remembers the decision you made together last week
+- it works on inputs it has never seen, or only on the examples you gave it
 
-</div>
+Spec-driven tools ([Spec Kit](https://github.com/github/spec-kit), Kiro, BMAD) help the agent plan before it codes. human-harness deals with what happens afterwards. Your spec, rules and checks are owner-approved and fingerprinted, the agent is stopped before it can change them, and the final judgement comes from cases it never saw.
 
----
+## What it looks like
 
-## 😩 The problem
+`harness/verify` is the one command you need to understand. This is real output from a small project with two acceptance checks:
 
-You ask an AI agent to build something. It says "done ✅". Then:
+```
+HARNESS VERIFY — demo @ trunk (main) — 2026-11-09 16:23
+ PASS     totals add up (0.0s)  cases=1
+ FAIL     handles empty input (0.0s)
+          | TypeError: 'NoneType' object is not iterable
+ WARN     fingerprint: never locked (owner: `harness/verify --lock` after approving checks)
+ PASS     hardcode: no test literals found in source
+ PASS     docs within size limits
+RESULT: FAIL (1 fail, 1 warn) · logs: harness/.logs/
+```
 
-- it built **something close to** what you meant, not what you meant
-- it **quietly changed the test** so the test would pass
-- it touched the folder you told it to stay out of
-- next session it has **forgotten** every decision you made together
-- you can't tell if it's right, because you'd have to read 2,000 lines of code
+The last three lines are built-in checks. They warn when the checks have changed since you approved them, when values copied from test files show up in the source code (a sign that a test was special-cased), and when the spec or status docs grow past what you can read in a minute.
 
-Most agent setups put rules on the **AI**. human-harness gets **what's in your head** onto paper first, then makes the AI prove its work against it.
+When the agent needs a decision only you can make, it doesn't guess. It writes the question in `harness/STATUS.md` and carries on with the work the question doesn't block:
 
-## ✨ What you get
+```
+Q3. Drop rows with missing timestamps? (4% of rows)
+    a) drop them — simpler, loses 4% of data
+    b) fill from the previous row — keeps data, may hide sensor faults   ← recommended: gaps are single readings
+    Blocks: training run. Not blocking: data validation, report layout.
+```
 
-| | |
-|---|---|
-| 🎤 **Deep interview** | Goal, real samples, numeric "done" criteria, never-touch list, risks. It keeps asking until there are no adjectives left, only numbers and examples. Nothing is ever asked twice. |
-| 📜 **A harness in your repo** | `SPEC.md`, `BOUNDARIES.md`, `checks.toml`, `STATUS.md`, `DECISIONS.md`, `ARCHITECTURE.md`. Short, plain language, owned by you. |
-| ✅ **`harness/verify`** | One command, a PASS/FAIL table. Your acceptance checks, plus built-in checks for code size, hardcoded test values and doc size. |
-| 🔒 **Hidden exam (holdout)** | You seal test cases in an encrypted vault outside the repo. The AI is **blocked** from reading them, so it can't overfit. You run the exam and see only the score. |
-| 🛡️ **Guard hooks** | The AI can't silently edit your approved spec, rules or checks: you get a prompt. Fingerprints catch any change made behind your back. |
-| 🧠 **Memory across sessions** | Every session starts with the rules and current status loaded. The AI can't finish a session without updating the status. |
-| 🌿 **Branch-aware** | Each git branch gets its own mini-spec. `merge` compares branch and main side by side, then keeps it or drops it (and keeps the lesson). |
-| 🔁 **Postmortems** | Something went wrong? It becomes a permanent rule or check, so the same mistake can't come back. |
-| 🎓 **Coaching + learn mode** | It points out the engineering skill you're weakest at while you work, and teaches any topic with hard questions on request. |
+## Install
 
-## 🎓 The exam analogy
-
-| School | human-harness |
-|---|---|
-| The syllabus | `SPEC.md`: what "done" means, in numbers |
-| School rules | `BOUNDARIES.md`: never / ask first / free |
-| Practice questions | `harness/verify`: the AI runs these as often as it likes |
-| The sealed final exam | `verify --holdout`: only **you** run it, the AI never sees the questions |
-| The teacher signs the rulebook | `verify --lock`: fingerprints what you approved |
-
-An AI that only passes the practice questions has memorised them. Passing the sealed exam shows it actually works.
-
-## 🚀 Install (30 seconds)
+Requires Python 3.11+, git, and openssl (openssl is only needed for the hidden test cases). Tested on Linux (WSL2).
 
 ```bash
 git clone https://github.com/dhananjaybhole4/human-harness.git
 cd human-harness && ./install.sh
 ```
 
-Restart Claude Code, open any project and type:
+The installer copies the skill to `~/.claude/skills/human-harness` and adds three hooks to `~/.claude/settings.json`, after backing that file up. It is safe to re-run, but a re-run replaces the installed skill, so any local edits you made to it are lost.
 
-```
-/human-harness
-```
+Restart Claude Code, open a project, and type `/human-harness`.
 
-**Needs:** Python 3.11+, git, and openssl (only for the hidden exam). `install.sh` copies the skill to
-`~/.claude/skills/human-harness`, backs up `~/.claude/settings.json`, and adds 3 hooks to it. It is safe to re-run.
+## How it works
 
-## 🔧 How it works
+1. **`/human-harness init`: the interview.** It covers purpose, context, inputs and outputs, success criteria, boundaries, risks and approach. It doesn't accept adjectives: "fast" becomes "under 200 ms for 10k rows", and "handles bad input" becomes three example rows with their expected results. On an existing repo it reads the code first, then asks about the choices it finds. No code is written during init.
+2. **You approve the harness.** These files are written to `harness/` in your repo:
 
-```
- you ──▶ /human-harness init ──▶ interview ──▶ harness/ (spec, rules, checks)   ◀── you approve
-                                                     │
-          /human-harness run ──▶ AI builds ──▶ harness/verify ──▶ PASS? ──▶ stops for your decisions
-                                                     │
-            you, in your own terminal ──▶ verify --holdout ──▶ score on cases the AI never saw
-```
+   | File | Contains | Changes |
+   |---|---|---|
+   | `SPEC.md` | goal, examples, a "done when" table where every row names its check | only with your approval |
+   | `BOUNDARIES.md` | never / ask first / free (max 15 rules) | only with your approval |
+   | `checks.toml` + `checks/` | acceptance checks: shell commands, exit 0 = pass | only with your approval, then you run `verify --lock` |
+   | `STATUS.md` | done, next, questions for you, what is *not* verified | overwritten every session |
+   | `DECISIONS.md` | `date — decision — why`, one line each | appended |
+   | `INTERVIEW.md` | every question and answer, so nothing is asked twice | appended |
 
-1. **`init`**: the interview, in 7 areas: purpose → context → inputs/outputs → success → boundaries → risks → approach. No code is written during init.
-2. **You approve.** Spec, rules and checks only change with your yes. Then `verify --lock`.
-3. **`run`**: the AI builds in a loop, proves each step with `verify`, and stops when it needs you (milestone done, a question only you can answer, the same check failing 3 times).
-4. **`verify --holdout`**: the real test, run by you.
-5. **`update` / `postmortem`**: when plans change or something breaks, the harness learns.
+3. **You seal the hidden cases.** You put test cases in `harness/_holdout_staging/` and run `harness/verify --seal` in your own terminal. They're encrypted with a password you choose (AES-256, openssl) into `~/harness-holdouts/`, outside the repo.
+4. **`/human-harness run`: the agent builds.** It works through STATUS one step at a time and runs `verify` after each step. It stops when a milestone passes, when everything left is waiting on your answers, or when the same check has failed three times in a row. At that point it reports and suggests a postmortem.
+5. **You run `harness/verify --holdout`.** It prints the scores only. If the agent passes the practice checks but fails here, it fitted the examples instead of solving the problem.
 
-## 📋 Commands
+Every Claude Code session in a harnessed project starts with the rules and the current status already loaded. If code changed after STATUS was last updated, the agent is blocked from ending the session until it updates STATUS.
 
-| You type | Where | What it does |
+## Commands
+
+| Command | Where | What it does |
 |---|---|---|
-| `/human-harness init` | Claude Code | Interview → harness (on a branch: a short branch interview) |
-| `/human-harness run` | Claude Code | Build until done or until it needs you (`/loop /human-harness run` for unattended) |
-| `/human-harness update [add X]` | Claude Code | Short re-interview, or add new scope |
-| `/human-harness check` | Claude Code | Health report: GREEN / AMBER / RED |
-| `/human-harness merge` | Claude Code | Finish a branch: compare with main, keep or drop |
-| `/human-harness postmortem` | Claude Code | Turn a mistake into a permanent fix |
-| `/human-harness learn <topic>` | Claude Code | Learn any topic, step by step |
-| `harness/verify` | terminal | Practice test: PASS / FAIL |
-| `harness/verify --compare [ref]` | terminal | This branch vs main, side by side |
-| `harness/verify --seal` | **your** terminal only | Encrypt hidden exam cases |
-| `harness/verify --lock` | **your** terminal only | Sign the approved rules and checks |
-| `harness/verify --holdout` | **your** terminal only | Run the hidden exam, scores only |
+| `/human-harness init` | Claude Code | Interview → harness. On a branch: a short interview, since main is already known. |
+| `/human-harness run` | Claude Code | Build until done or blocked. Use `/loop /human-harness run` to run it unattended. |
+| `/human-harness update [add X]` | Claude Code | Re-interview when plans change, or add new scope |
+| `/human-harness check` | Claude Code | Health audit of the harness: GREEN / AMBER / RED |
+| `/human-harness merge` | Claude Code | Finish a branch: compare it with main, then keep it or drop it (the lesson is kept either way) |
+| `/human-harness postmortem` | Claude Code | Turn a mistake into a new rule or check |
+| `/human-harness learn <topic>` | Claude Code | Step-by-step teaching with graded questions. It teaches judgment, not syntax. |
+| `harness/verify [--only NAME]` | terminal | Run the checks |
+| `harness/verify --compare [ref]` | terminal | Run the checks on this branch and on `ref` (default main), side by side |
+| `harness/verify --lock` / `--seal` / `--holdout` | **your terminal only** | Approve the checks / encrypt the hidden cases / score the hidden cases |
 
-## 🎓 Learn mode
+The owner-only flags refuse to run unless the command is run interactively in a terminal (stdin and stdout attached to a TTY), and the guard hook blocks the agent from typing them at all.
 
-```
-/human-harness learn vector databases
-```
+For ML projects there's an add-on (`addons/ml.md`). It requires a baseline that must be beaten by an agreed margin and checks for data leakage (overlap between splits, features from the future). It also runs a shuffled-label sanity test: if the model still scores well on shuffled labels, the pipeline is leaking.
 
-You get one small step at a time, each with an analogy and an example, then **5 questions** that get harder:
-**easy → medium → hard → scalable → critical**. The answers are graded honestly: wrong or vague answers don't get praise, and "idk" gets taught and asked again in a different way.
+## What it protects against, and what it doesn't
 
-It never asks you to write code. With AI writing the code, the skill that matters is the judgment to **direct it and catch its mistakes**: trade-offs, failure modes, what breaks at scale. That's what learn mode trains.
+This is a set of guard rails, not a sandbox.
 
-## 📁 What it adds to your project
+**Covered:**
+- **Edits to approved files.** Editing `SPEC.md`, `BOUNDARIES.md`, `checks.toml` or `checks/` triggers an approval prompt. Edits that get past the prompt, for example through a script, are flagged by the fingerprint the next time `verify` runs.
+- **Reading the hidden cases.** Any tool call that mentions the vault path is denied, and the cases are encrypted. Even if the agent found the file, it would need your password to read it.
+- **Gaming the tests.** Test values copied into source code are flagged by the hardcode scan.
+- **Forgetting.** Decisions and Q&A live in the repo, not in chat history.
 
-```
-harness/
-├── SPEC.md          # goal, examples, "done when" table (≤ ~60 lines)
-├── BOUNDARIES.md    # never / ask first / free (≤ 15 rules)
-├── checks.toml      # acceptance checks (approved by you)
-├── checks/          # check scripts
-├── STATUS.md        # done / next / needs you / not verified (≤ 30 lines)
-├── DECISIONS.md     # date — decision — why, one line each
-├── ARCHITECTURE.md  # map of the code, for the AI
-├── INTERVIEW.md     # every Q&A, so nothing is asked twice
-├── branches/<name>/ # per-branch spec and status
-└── verify           # the PASS/FAIL command
-```
+**Not covered:**
+- **A determined agent can get past a text-matching guard.** For example, it could build the vault path inside a script instead of typing it. The encryption is what actually protects the hidden cases, so don't store your password anywhere the agent can read it.
+- **The holdout command is yours to check.** `--holdout` runs the evaluation command from `checks.toml`. If that script prints the cases, they leak. Approve it the way you'd approve any check.
+- **Checks only prove what they test.** A weak check passes weak code. The interview pushes for measurable criteria, but deciding which checks matter is still your job.
 
-The hidden exam lives **outside** the repo, in `~/harness-holdouts/`, encrypted.
+## Things to know before installing
 
-## ❓ FAQ
+- **The guard hook is global.** It runs on every tool call in every project, not just harnessed ones. Outside a harness it does two things: it blocks commands that mention the vault or owner-only flags, and it asks before the agent edits `~/.claude/settings.json` or `~/.claude/CLAUDE.md`. The other two hooks do nothing in projects without a `harness/` folder.
+- **Each harnessed repo depends on the installed skill.** `harness/verify` calls `~/.claude/skills/human-harness/scripts/verify.py`, so anyone who clones the repo needs the skill installed too.
+- **Claude Code only.** It relies on Claude Code skills and hooks.
+- **The interview takes time.** That's deliberate, because time spent answering questions upfront is time not spent redoing work later. For a throwaway script, it isn't worth it.
 
-**Is the holdout actually hidden from the AI?**
-The guard hook blocks any tool call that mentions the vault or the owner-only flags, and the cases are encrypted with a password only you know. It's a strong guard rail, not a sandbox.
+## Uninstall
 
-**Do I need to be a programmer?**
-No. It was built for people who judge work by results. Everything you approve is plain language with numbers and examples.
+Delete `~/.claude/skills/human-harness`, and remove the three `human-harness` hook entries from `~/.claude/settings.json`. The installer saved a backup next to it as `settings.json.bak.<timestamp>`. Each project's `harness/` folder is plain files: keep it or delete it.
 
-**Does it work on an existing project?**
-Yes. `init` reads the repo first and asks you about the decisions it finds (intentional, legacy or unknown?).
+## Contributing
 
-**ML projects?**
-There's an ML add-on: a mandatory baseline to beat, data-leakage checks (split overlap, future features), and a shuffled-label sanity test.
+The most useful contributions are domain add-ons in `skills/human-harness/addons/` (web apps, data pipelines, embedded and so on): what to ask in the interview, which checks to propose, and the red flags for that domain. `addons/ml.md` shows the format.
 
-**Uninstall?**
-Delete `~/.claude/skills/human-harness` and remove its 3 hooks from `~/.claude/settings.json`. A backup of that file was made when you installed.
-
-## 🤝 Contributing
-
-Issues and PRs are welcome, especially new **domain add-ons** (`skills/human-harness/addons/`): web apps, data pipelines, embedded, mobile.
-If the harness saved you from a bad AI "done ✅", open an issue and tell the story.
-
-## ⭐ If it helps you
-
-Star the repo so others can find it.
+Bug reports are most useful when they include the `harness/verify` output and what you expected instead.
 
 ## License
 
